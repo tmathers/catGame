@@ -13,7 +13,11 @@ public class BallMotion : MonoBehaviour {
 
     public float speed;
     public float maxSpeed;
+
     private int score = 0;
+
+    private float screenHeight;
+    private float screenWidth;
 
     // If the velocity is between +/- this, then change the direction randomly
     private float zeroVelocitySensitivity = 1.0f;
@@ -25,17 +29,29 @@ public class BallMotion : MonoBehaviour {
         ballCollider = GetComponent<Collider2D>();
         GameObject obj = GameObject.Find("/SampleScene");
         
+        // Get screen width & height
+        Camera camera = Camera.main;
+        screenHeight = camera.orthographicSize * 2;
+        screenWidth = camera.aspect * screenHeight;
+
+        Debug.Log("Screen: " +  screenWidth + ", " + screenHeight);
+
         // Score text
         obj = GameObject.Find("ScoreText");
         //Debug.Log("OBJ: " + obj.name);
         scoreText = obj.GetComponent<TextMeshProUGUI>();
         scoreText.text = "0";
 
+        positionBall();
+
         // set the ball's initial speed
         Vector2 direction = new Vector2(Random.Range(-1f, 1f), Random.Range(-1f, 1f));
         direction.Normalize();  
 
         rb2d.velocity = direction * speed;
+
+        rotateToMovement();
+
     }
  
 
@@ -59,8 +75,8 @@ public class BallMotion : MonoBehaviour {
     // When the ball is hit
     private void hit(Vector2 point) {
 
-        Debug.Log("clicked: " + point.x + ", " + point.y);
-        Debug.Log("Ball:    " + rb2d.position.x + ", " + rb2d.position.y);
+        //Debug.Log("clicked: " + point.x + ", " + point.y);
+        //Debug.Log("Ball:    " + rb2d.position.x + ", " + rb2d.position.y);
 
 
         float distance = Mathf.Sqrt(
@@ -69,14 +85,24 @@ public class BallMotion : MonoBehaviour {
         Debug.Log("Distance: " + distance);
 
         // Check if there is a collision
-        if (distance < 0.5) { //ballCollider.OverlapPoint(point)) { didn't work for some reason
-            Debug.Log("Collision Detected !");
+        if (distance <= 5f) { //ballCollider.OverlapPoint(point)) { didn't work for some reason
+            //Debug.Log("Collision Detected !");
             
             // Update score
             score += 10;
             scoreText.text = "" + score;
             
             hitSound.Play();
+
+            // Reset ball position
+
+            positionBall();
+
+            Vector2 direction = new Vector2(Random.Range(-1f, 1f), Random.Range(-1f, 1f));
+            direction.Normalize();  
+            rb2d.velocity = direction * speed;
+
+            rotateToMovement();
 
         }
     }
@@ -110,8 +136,34 @@ public class BallMotion : MonoBehaviour {
             rb2d.AddForce(movement * speed);
         }
 
+        rotateToMovement();
+    }
 
+    /**
+     * Position the ball randomly on the screen
+     */
+    void positionBall() {
 
+        const float MARGIN = 0.85f; // Leave a margin around the edge so we don't go off it
+        float x = Random.Range(-screenWidth * MARGIN / 2, screenWidth * MARGIN /2);
+        float y = Random.Range(-screenHeight  * MARGIN / 2, screenHeight * MARGIN /2);
 
+        Debug.Log("Moving to " + x + ", " + y);
+
+        rb2d.position = new Vector2(x, y);
+    }
+
+    /**
+     */
+    void rotateToMovement() {
+
+        // Rotate the mouse to point in the direction it's traveling
+        // tan(theta) = opp/adj = x/y  (rads)
+        // Note: use Atan2 which takes into account the quadrant, so additional calc not needs
+        // * 180/PI to get deg
+
+        float rotation = Mathf.Atan2(rb2d.velocity.x, rb2d.velocity.y) * Mathf.Rad2Deg;
+
+        rb2d.rotation = -rotation + 180;
     }
 }
